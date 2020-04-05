@@ -38,4 +38,9 @@
 # Also exclude build directory
 build/
 
+# Exclude vscode directory
+.vscode/
+
+# Mac OS Specific
+.DS_Store
 # End of https://www.gitignore.io/api/c++
