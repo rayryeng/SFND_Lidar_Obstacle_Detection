@@ -1,6 +1,8 @@
 // PCL lib Functions for processing point clouds
 
 #include "processPointClouds.h"
+#include <unordered_set>
+#include "quiz/ransac/ransac3d.h"
 
 template <typename PointT>
 void ProcessPointClouds<PointT>::numPoints(
@@ -37,9 +39,36 @@ ProcessPointClouds<PointT>::SeparateClouds(
   // TODO: Create two new point clouds, one cloud with obstacles and other with
   // segmented plane
 
+  // From the PCL tutorial
+  // Create the filtering object
+  pcl::ExtractIndices<pcl::PointXYZ> extract;
+
+  // Two point clouds - Obstacles (cars) and the road
+  typename pcl::PointCloud<PointT>::Ptr obstacle_point_cloud{
+      new pcl::PointCloud<PointT>};
+  typename pcl::PointCloud<PointT>::Ptr road_point_cloud{
+      new pcl::PointCloud<PointT>};
+
+  // Set up the point cloud for the filtering object
+  extract.setInputCloud(cloud);
+
+  // Set up the indices
+  extract.setIndices(inliers);
+
+  // Extract the inliers
+  extract.setNegative(false); // False means points belonging to inliers remain
+                              // inliers are the points belonging to the road
+  extract.filter(*road_point_cloud);
+
+  // Extract the outliers
+  extract.setNegative(
+      true); // True means points belonging to outliers remain
+             // outliers are the points not belonging to the road
+  extract.filter(*obstacle_point_cloud);
+
   std::pair<typename pcl::PointCloud<PointT>::Ptr,
             typename pcl::PointCloud<PointT>::Ptr>
-      segResult(cloud, cloud);
+      segResult(obstacle_point_cloud, road_point_cloud);
   return segResult;
 }
 
@@ -48,11 +77,45 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr,
           typename pcl::PointCloud<PointT>::Ptr>
 ProcessPointClouds<PointT>::SegmentPlane(
     typename pcl::PointCloud<PointT>::Ptr cloud, int maxIterations,
-    float distanceThreshold) {
+    float distanceThreshold, const bool useCustom) {
   // Time segmentation process
   auto startTime = std::chrono::steady_clock::now();
-  pcl::PointIndices::Ptr inliers;
+
   // TODO:: Fill in this function to find inliers for the cloud.
+
+  // From the PCL tutorial
+  pcl::ModelCoefficients::Ptr coefficients{new pcl::ModelCoefficients};
+  pcl::PointIndices::Ptr inliers{new pcl::PointIndices};
+
+  if (!useCustom) {
+    // Create the segmentation object
+    pcl::SACSegmentation<pcl::PointXYZ> seg;
+
+    // Set up the options
+    seg.setOptimizeCoefficients(true);
+    seg.setModelType(pcl::SACMODEL_PLANE);
+    seg.setMethodType(pcl::SAC_RANSAC);
+    seg.setMaxIterations(maxIterations);
+    seg.setDistanceThreshold(distanceThreshold);
+
+    seg.setInputCloud(cloud); // Set up the point cloud
+
+    // Perform RANSAC to find the plane for the point cloud (i.e. the road)
+    seg.segment(*inliers, *coefficients);
+  } else { // Using custom implementation made for the quiz
+    std::unordered_set<int> inliers_set =
+        Ransac3D(cloud, maxIterations, distanceThreshold);
+    for (const int index : inliers_set) {
+      inliers->indices.push_back(index);
+    }
+  }
+
+  // Report if there are no inliers
+  if (inliers->indices.size() == 0) {
+    std::cerr << "There were no inliers with this point cloud - plane "
+                 "extraction is not possible"
+              << std::endl;
+  }
 
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(
