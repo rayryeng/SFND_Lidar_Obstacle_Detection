@@ -1,11 +1,12 @@
 /* \author Aaron Brown */
 // Quiz on implementing simple RANSAC line fitting
 
+#include <chrono>
+#include <string>
 #include "../../render/box.h"
 #include "../../render/render.h"
 #include "kdtree.h"
-#include <chrono>
-#include <string>
+#include "euclidean_cluster.h"
 
 // Arguments:
 // window is the region to draw box around
@@ -18,13 +19,14 @@ pcl::visualization::PCLVisualizer::Ptr initScene(Box window, int zoom) {
   viewer->setCameraPosition(0, 0, zoom, 0, 1, 0);
   viewer->addCoordinateSystem(1.0);
 
+  // Ray - Changed to black background as I can't see any point
   viewer->addCube(window.x_min, window.x_max, window.y_min, window.y_max, 0, 0,
-                  1, 1, 1, "window");
+                  0, 0, 0, "window");
   return viewer;
 }
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr
-CreateData(std::vector<std::vector<float>> points) {
+pcl::PointCloud<pcl::PointXYZ>::Ptr CreateData(
+    std::vector<std::vector<float>> points) {
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(
       new pcl::PointCloud<pcl::PointXYZ>());
 
@@ -42,8 +44,11 @@ CreateData(std::vector<std::vector<float>> points) {
   return cloud;
 }
 
-void render2DTree(Node *node, pcl::visualization::PCLVisualizer::Ptr &viewer,
-                  Box window, int &iteration, uint depth = 0) {
+void render2DTree(Node* node,
+                  pcl::visualization::PCLVisualizer::Ptr& viewer,
+                  Box window,
+                  int& iteration,
+                  uint depth = 0) {
 
   if (node != NULL) {
     Box upperWindow = window;
@@ -71,17 +76,6 @@ void render2DTree(Node *node, pcl::visualization::PCLVisualizer::Ptr &viewer,
   }
 }
 
-std::vector<std::vector<int>>
-euclideanCluster(const std::vector<std::vector<float>> &points, KdTree *tree,
-                 float distanceTol) {
-
-  // TODO: Fill out this function to return list of indices for each cluster
-
-  std::vector<std::vector<int>> clusters;
-
-  return clusters;
-}
-
 int main() {
 
   // Create viewer
@@ -103,7 +97,7 @@ int main() {
   // {-5.2,7.1}, {-5.7,6.3} };
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = CreateData(points);
 
-  KdTree *tree = new KdTree;
+  KdTree* tree = new KdTree;
 
   for (int i = 0; i < points.size(); i++)
     tree->insert(points[i], i);
@@ -130,7 +124,9 @@ int main() {
 
   // Render clusters
   int clusterId = 0;
-  std::vector<Color> colors = {Color(1, 0, 0), Color(0, 1, 0), Color(0, 0, 1)};
+  std::vector<Color> colors = {
+      Color(1, 1, 0), Color(0, 1, 1),
+      Color(1, 0, 1)};  // Changed to make colours clearer
   for (std::vector<int> cluster : clusters) {
     pcl::PointCloud<pcl::PointXYZ>::Ptr clusterCloud(
         new pcl::PointCloud<pcl::PointXYZ>());
@@ -142,8 +138,7 @@ int main() {
                      colors[clusterId % 3]);
     ++clusterId;
   }
-  if (clusters.size() == 0)
-    renderPointCloud(viewer, cloud, "data");
+  if (clusters.size() == 0) renderPointCloud(viewer, cloud, "data");
 
   while (!viewer->wasStopped()) {
     viewer->spinOnce();

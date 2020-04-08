@@ -1,8 +1,8 @@
 #ifndef LIDAR_H
 #define LIDAR_H
-#include "../render/render.h"
 #include <chrono>
 #include <ctime>
+#include "../render/render.h"
 
 const double pi = 3.1415;
 
@@ -22,17 +22,24 @@ struct Ray {
   // radians is stright up resolution: the magnitude of the ray's step, used for
   // ray casting, the smaller the more accurate but the more expensive
 
-  Ray(Vect3 setOrigin, double horizontalAngle, double verticalAngle,
+  Ray(Vect3 setOrigin,
+      double horizontalAngle,
+      double verticalAngle,
       double setResolution)
-      : origin(setOrigin), resolution(setResolution),
+      : origin(setOrigin),
+        resolution(setResolution),
         direction(resolution * cos(verticalAngle) * cos(horizontalAngle),
                   resolution * cos(verticalAngle) * sin(horizontalAngle),
                   resolution * sin(verticalAngle)),
-        castPosition(origin), castDistance(0) {}
+        castPosition(origin),
+        castDistance(0) {}
 
-  void rayCast(const std::vector<Car> &cars, double minDistance,
-               double maxDistance, pcl::PointCloud<pcl::PointXYZ>::Ptr &cloud,
-               double slopeAngle, double sderr) {
+  void rayCast(const std::vector<Car>& cars,
+               double minDistance,
+               double maxDistance,
+               pcl::PointCloud<pcl::PointXYZ>::Ptr& cloud,
+               double slopeAngle,
+               double sderr) {
     // reset ray
     castPosition = origin;
     castDistance = 0;
@@ -51,8 +58,7 @@ struct Ray {
       if (!collision && castDistance < maxDistance) {
         for (Car car : cars) {
           collision |= car.checkCollision(castPosition);
-          if (collision)
-            break;
+          if (collision) break;
         }
       }
     }
@@ -112,8 +118,8 @@ struct Lidar {
     }
   }
 
-  ~Lidar() = default; // pcl uses boost smart pointers for cloud pointer so we
-                      // don't have to worry about manually freeing the memory
+  ~Lidar() = default;  // pcl uses boost smart pointers for cloud pointer so we
+                       // don't have to worry about manually freeing the memory
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr scan() {
     cloud->points.clear();
@@ -126,7 +132,7 @@ struct Lidar {
     cout << "ray casting took " << elapsedTime.count() << " milliseconds"
          << endl;
     cloud->width = cloud->points.size();
-    cloud->height = 1; // one dimensional unorganized point cloud dataset
+    cloud->height = 1;  // one dimensional unorganized point cloud dataset
     return cloud;
   }
 };

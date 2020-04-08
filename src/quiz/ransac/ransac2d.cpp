@@ -1,9 +1,9 @@
 /* \author Aaron Brown */
 // Quiz on implementing simple RANSAC line fitting
 
+#include <unordered_set>
 #include "../../processPointClouds.h"
 #include "../../render/render.h"
-#include <unordered_set>
 // using templates for processPointClouds so also include .cpp to help linker
 #include "../../processPointClouds.cpp"
 #include "ransac3d.h"
@@ -57,7 +57,8 @@ pcl::visualization::PCLVisualizer::Ptr initScene() {
 }
 
 std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                               int maxIterations, float distanceTol) {
+                               int maxIterations,
+                               float distanceTol) {
   std::unordered_set<int> inliersResult;
   srand(time(NULL));
 
@@ -78,8 +79,8 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
       continue;
     }
 
-    const auto &pt1 = cloud->points[index1];
-    const auto &pt2 = cloud->points[index2];
+    const auto& pt1 = cloud->points[index1];
+    const auto& pt2 = cloud->points[index2];
 
     // Ax + By + C = 0
     // y = mx + b
@@ -95,14 +96,12 @@ std::unordered_set<int> Ransac(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
     // Measure distance between every point and fitted line
     // If distance is smaller than threshold count it as inlier
     for (int j = 0; j < num_points; j++) {
-      const auto &pt = cloud->points[j];
+      const auto& pt = cloud->points[j];
       // d = |Ax + By + C| / sqrt(A^2 + B^2)
       // d = |-slope*x + y - intercept| / sqrt(slope*slope + 1)
       const double d = std::abs(-slope * pt.x + pt.y - intercept) /
                        std::sqrt(slope * slope + 1.0);
-      if (d <= distanceTol) {
-        proposed_inliers.insert(j);
-      }
+      if (d <= distanceTol) { proposed_inliers.insert(j); }
     }
 
     // Return indicies of inliers from fitted line with most inliers

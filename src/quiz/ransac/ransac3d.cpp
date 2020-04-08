@@ -5,7 +5,8 @@
 #include "ransac3d.h"
 
 std::unordered_set<int> Ransac3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
-                                 int maxIterations, float distanceTol) {
+                                 int maxIterations,
+                                 float distanceTol) {
   std::unordered_set<int> inlier_results;
   srand(time(NULL));
 
@@ -32,9 +33,9 @@ std::unordered_set<int> Ransac3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 
     // Obtain the points
     std::unordered_set<int>::iterator it = indices_to_sample.begin();
-    const auto &pt1 = cloud->points[*it++];
-    const auto &pt2 = cloud->points[*it++];
-    const auto &pt3 = cloud->points[*it];
+    const auto& pt1 = cloud->points[*it++];
+    const auto& pt2 = cloud->points[*it++];
+    const auto& pt3 = cloud->points[*it];
 
     // Calculate the coefficients for the plane
     // A = (y2 - y1)(z3 - z1) - (z2 - z1)(y3 - y1)
@@ -51,12 +52,10 @@ std::unordered_set<int> Ransac3D(pcl::PointCloud<pcl::PointXYZ>::Ptr cloud,
 
     // Find inliers
     for (int j = 0; j < num_points; j++) {
-      const auto &pt = cloud->points[j];
+      const auto& pt = cloud->points[j];
       const double dist = std::abs(A * pt.x + B * pt.y + C * pt.z + D) /
                           std::sqrt(A * A + B * B + C * C);
-      if (dist <= distanceTol) {
-        proposed_inliers.insert(j);
-      }
+      if (dist <= distanceTol) { proposed_inliers.insert(j); }
     }
 
     // Retain the best inliers
