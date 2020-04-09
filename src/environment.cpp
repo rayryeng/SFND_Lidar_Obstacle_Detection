@@ -83,7 +83,11 @@ void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer) {
     renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(cluster_id),
                      colors[cluster_id]);
     // Added from Lesson 3 - draw bounding boxes for obstacle point cloud
-    Box box = point_processor.BoundingBox(cluster);
+    // Box box = point_processor.BoundingBox(cluster);
+    // renderBox(viewer, box, cluster_id);
+
+    // Optional - Use rotated bounding box instead
+    BoxQ box = point_processor.RotatedBoundingBox(cluster);
     renderBox(viewer, box, cluster_id);
     ++cluster_id;
   }

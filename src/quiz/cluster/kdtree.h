@@ -51,7 +51,7 @@ struct KdTree {
     // Until we hit a leaf...
     while (ptr != nullptr) {
       // Figure out which coordinate we want to compare with
-      const int index = depth % 2;
+      const int index = depth % point.size();
       const float coord_src = ptr->point[index];
       const float coord_to_comp = point[index];
 

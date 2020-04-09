@@ -270,6 +270,57 @@ Box ProcessPointClouds<PointT>::BoundingBox(
   return box;
 }
 
+// Added - Return a BoxQ object so that it contains the
+// rotated version of the bounding box to tightly wrap around the
+// point cloud
+template <typename PointT>
+BoxQ ProcessPointClouds<PointT>::RotatedBoundingBox(
+    typename pcl::PointCloud<PointT>::Ptr cluster) {
+  // Process is from:
+  // http://codextechnicanum.blogspot.com/2015/04/find-minimum-oriented-bounding-box-of.html
+  BoxQ box;
+
+  // Step #1 - Use PCA and get the components
+  typename pcl::PointCloud<PointT>::Ptr cloudPCAprojection(
+      new pcl::PointCloud<PointT>);
+  pcl::PCA<PointT> pca;
+  pca.setInputCloud(cluster);
+  pca.project(*cluster, *cloudPCAprojection);
+
+  // Step #2
+  // Transform the original cloud to the origin where the principal components correspond to the axes.
+  Eigen::Vector4f pcaCentroid;
+  pcl::compute3DCentroid(*cluster, pcaCentroid);
+  Eigen::Matrix3f eigenVectorsPCA = pca.getEigenVectors();
+  Eigen::Matrix4f projectionTransform(Eigen::Matrix4f::Identity());
+  projectionTransform.block<3, 3>(0, 0) = eigenVectorsPCA.transpose();
+  projectionTransform.block<3, 1>(0, 3) =
+      -1.f * (projectionTransform.block<3, 3>(0, 0) * pcaCentroid.head<3>());
+  typename pcl::PointCloud<PointT>::Ptr cloudPointsProjected(
+      new pcl::PointCloud<PointT>);
+  pcl::transformPointCloud(*cluster, *cloudPointsProjected,
+                           projectionTransform);
+  // Get the minimum and maximum points of the transformed cloud.
+  PointT minPoint, maxPoint;
+  pcl::getMinMax3D(*cloudPointsProjected, minPoint, maxPoint);
+  const Eigen::Vector3f meanDiagonal =
+      0.5f * (maxPoint.getVector3fMap() + minPoint.getVector3fMap());
+
+  // Step #3 - Final Transform
+  const Eigen::Quaternionf bboxQuaternion(
+      eigenVectorsPCA);  //Quaternions are a way to do rotations https://www.youtube.com/watch?v=mHVwd8gYLnI
+  const Eigen::Vector3f bboxTransform =
+      eigenVectorsPCA * meanDiagonal + pcaCentroid.head<3>();
+
+  // Set parameters and return
+  box.bboxTransform = bboxTransform;
+  box.bboxQuaternion = bboxQuaternion;
+  box.cube_length = maxPoint.x - minPoint.x;
+  box.cube_width = maxPoint.y - minPoint.y;
+  box.cube_height = maxPoint.z - minPoint.z;
+  return box;
+}
+
 template <typename PointT>
 void ProcessPointClouds<PointT>::savePcd(
     typename pcl::PointCloud<PointT>::Ptr cloud, std::string file) {

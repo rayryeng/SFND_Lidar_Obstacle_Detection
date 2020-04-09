@@ -4,7 +4,8 @@
 #define PROCESSPOINTCLOUDS_H_
 
 #include <pcl/common/common.h>
-#include <pcl/common/transforms.h>
+#include <pcl/common/pca.h>         // For PCA
+#include <pcl/common/transforms.h>  // For PCA
 #include <pcl/filters/crop_box.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
@@ -55,6 +56,9 @@ class ProcessPointClouds {
       const bool useCustom = false);
 
   Box BoundingBox(typename pcl::PointCloud<PointT>::Ptr cluster);
+
+  // Added for rotated bounding boxes
+  BoxQ RotatedBoundingBox(typename pcl::PointCloud<PointT>::Ptr cluster);
 
   void savePcd(typename pcl::PointCloud<PointT>::Ptr cloud, std::string file);
 
