@@ -25,25 +25,9 @@ struct KdTree {
 
   KdTree() : root(NULL) {}
 
-  ~KdTree() { deleteTree(root); }
-
-  void deleteTree(Node* node) {
-    // If we're at a leaf node, delete the node, force to
-    // NULL then get out so the rest of the logic can work
-    if (node->left == nullptr && node->right == nullptr) {
-      delete node;
-      node = nullptr;
-      return;
-    }
-    // Recursively move towards the left
-    if (node->left != nullptr) {
-      deleteTree(node->left);
-    }
-
-    // Same for the right
-    if (node->right != nullptr) {
-      deleteTree(node->right);
-    }
+  ~KdTree() {
+    delete root;
+    root = NULL;
   }
 
   void insert(std::vector<float> point, int id) {
