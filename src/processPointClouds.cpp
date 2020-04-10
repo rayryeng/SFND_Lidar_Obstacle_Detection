@@ -24,6 +24,48 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(
 
   // TODO:: Fill in the function to do voxel grid point reduction and region
   // based filtering
+  typename pcl::PointCloud<PointT>::Ptr voxel_grid_filtered{
+      new pcl::PointCloud<PointT>};
+  // Step #1 - VoxelGrid quantization
+  typename pcl::VoxelGrid<PointT> vg;
+  vg.setInputCloud(cloud);
+  vg.setLeafSize(filterRes, filterRes, filterRes);  // Units in metres
+  vg.filter(*voxel_grid_filtered);
+
+  // Step #2 - Crop to the region of interest
+  typename pcl::PointCloud<PointT>::Ptr voxel_grid_crop{
+      new pcl::PointCloud<PointT>};
+  typename pcl::CropBox<PointT> crop(true);
+  crop.setMin(minPoint);
+  crop.setMax(maxPoint);
+  crop.setInputCloud(voxel_grid_filtered);
+  crop.filter(*voxel_grid_crop);
+
+  // Optional - remove the roof pixels
+  // Make a new crop object and obtain the indices of where to remove
+  std::vector<int> indices_to_remove_roof;
+  const Eigen::Vector4f min_point_roof(-2, -2, -1, 1);
+  const Eigen::Vector4f max_point_roof(3, 2, 1, 1);
+  typename pcl::CropBox<PointT> crop_roof(true);
+  crop_roof.setMin(min_point_roof);
+  crop_roof.setMax(max_point_roof);
+  crop_roof.setInputCloud(voxel_grid_crop);
+  crop_roof.filter(indices_to_remove_roof);
+
+  // Remove the roof points
+  // First create an indices object that contains the indices we want to remove
+  pcl::PointIndices::Ptr inliers{new pcl::PointIndices};
+  for (const int idx : indices_to_remove_roof) {
+    inliers->indices.push_back(idx);
+  }
+
+  // Next, create an extraction tool that will remove the indices
+  // Set the negative flag to true to remove these indices
+  typename pcl::ExtractIndices<PointT> extract;
+  extract.setInputCloud(voxel_grid_crop);
+  extract.setIndices(inliers);
+  extract.setNegative(true);  // Inliers will now remove the points instead
+  extract.filter(*voxel_grid_crop);
 
   auto endTime = std::chrono::steady_clock::now();
   auto elapsedTime = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -31,7 +73,7 @@ typename pcl::PointCloud<PointT>::Ptr ProcessPointClouds<PointT>::FilterCloud(
   std::cout << "filtering took " << elapsedTime.count() << " milliseconds"
             << std::endl;
 
-  return cloud;
+  return voxel_grid_crop;
 }
 
 template <typename PointT>
@@ -45,7 +87,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr,
 
   // From the PCL tutorial
   // Create the filtering object
-  pcl::ExtractIndices<pcl::PointXYZ> extract;
+  pcl::ExtractIndices<PointT> extract;
 
   // Two point clouds - Obstacles (cars) and the road
   typename pcl::PointCloud<PointT>::Ptr obstacle_point_cloud{
@@ -75,12 +117,11 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr,
   return segResult;
 }
 
+// Modified to include an optional flag so that we can switch between
+// using PCL RANSAC implementation or custom implementation from the quiz
 template <typename PointT>
 std::pair<typename pcl::PointCloud<PointT>::Ptr,
           typename pcl::PointCloud<PointT>::Ptr>
-
-    // Modified to include an optional flag so that we can switch between
-    // using PCL RANSAC implementation or custom implementation from the quiz
     ProcessPointClouds<PointT>::SegmentPlane(
         typename pcl::PointCloud<PointT>::Ptr cloud,
         int maxIterations,
@@ -98,7 +139,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr,
 
   if (!useCustom) {
     // Create the segmentation object
-    pcl::SACSegmentation<pcl::PointXYZ> seg;
+    pcl::SACSegmentation<PointT> seg;
 
     // Set up the options
     seg.setOptimizeCoefficients(true);
@@ -113,7 +154,7 @@ std::pair<typename pcl::PointCloud<PointT>::Ptr,
     seg.segment(*inliers, *coefficients);
   } else {  // Using custom implementation made for the quiz
     std::unordered_set<int> inliers_set =
-        Ransac3D(cloud, maxIterations, distanceThreshold);
+        RANSAC3D<PointT>::Ransac3D(cloud, maxIterations, distanceThreshold);
     for (const int index : inliers_set) {
       inliers->indices.push_back(index);
     }
@@ -159,7 +200,7 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr>
     // http://pointclouds.org/documentation/tutorials/cluster_extraction.php
     // Creating the KdTree object for the search method of the extraction
 
-    typename pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(
+    typename pcl::search::KdTree<PointT>::Ptr tree(
         new pcl::search::KdTree<PointT>);
     tree->setInputCloud(cloud);
 
@@ -167,7 +208,7 @@ std::vector<typename pcl::PointCloud<PointT>::Ptr>
     std::vector<pcl::PointIndices> cluster_indices;
 
     // Euclidean distance object to perform clustering
-    pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
+    pcl::EuclideanClusterExtraction<PointT> ec;
 
     // Set up parameters then cluster
     ec.setClusterTolerance(clusterTolerance);  // in cm

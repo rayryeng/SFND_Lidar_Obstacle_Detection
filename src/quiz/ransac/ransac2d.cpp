@@ -125,7 +125,7 @@ int main() {
   // TODO: Change the max iteration and distance tolerance arguments for
   // Ransac function
   //std::unordered_set<int> inliers = Ransac(cloud, 50, 0.5);
-  std::unordered_set<int> inliers = Ransac3D(cloud, 200, 0.5);
+  std::unordered_set<int> inliers = RANSAC3D<pcl::PointXYZ>::Ransac3D(cloud, 200, 0.5);
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr cloudInliers(
       new pcl::PointCloud<pcl::PointXYZ>());

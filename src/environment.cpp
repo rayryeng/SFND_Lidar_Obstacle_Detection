@@ -32,6 +32,54 @@ std::vector<Car> initHighway(bool renderScene,
   return cars;
 }
 
+void cityBlock(pcl::visualization::PCLVisualizer::Ptr& viewer,
+               const bool useCustom = false) {
+  // ----------------------------------------------------
+  // -----Open 3D viewer and display City Block     -----
+  // ----------------------------------------------------
+
+  ProcessPointClouds<pcl::PointXYZI>* point_processor =
+      new ProcessPointClouds<pcl::PointXYZI>();
+  pcl::PointCloud<pcl::PointXYZI>::Ptr input_cloud =
+      point_processor->loadPcd("../src/sensors/data/pcd/data_1/0000000000.pcd");
+  //renderPointCloud(viewer, input_cloud, "inputCloud");
+
+  pcl::PointCloud<pcl::PointXYZI>::Ptr filter_cloud =
+      point_processor->FilterCloud(input_cloud, 0.1,
+                                   Eigen::Vector4f(-30, -6, -3, 1),
+                                   Eigen::Vector4f(30, 7, 3, 1));
+  //renderPointCloud(viewer, filter_cloud, "filterCloud");
+
+  ///// Obstacle Detection
+  // Step #1 - Find the road plane and remove from the point cloud
+  std::pair<pcl::PointCloud<pcl::PointXYZI>::Ptr,
+            pcl::PointCloud<pcl::PointXYZI>::Ptr>
+      segment_cloud =
+          point_processor->SegmentPlane(filter_cloud, 100, 0.3, useCustom);
+
+  // Step #2 - Perform clustering
+  std::vector<pcl::PointCloud<pcl::PointXYZI>::Ptr> cloud_clusters =
+      point_processor->Clustering(segment_cloud.first, 0.5, 20, 2000, useCustom);
+
+  renderPointCloud(viewer, segment_cloud.first, "obstCloud", Color(1, 0, 0));
+  renderPointCloud(viewer, segment_cloud.second, "planeCloud", Color(0, 1, 0));
+
+  // Step #3 - Place bounding boxes around objects
+  // Use rotated bounding box instead
+  int cluster_id = 0;
+  std::vector<Color> colors = {Color(1, 1, 0), Color(0, 1, 1),
+                               Color(1, 0, 1)};  // Changed colours
+
+  for (pcl::PointCloud<pcl::PointXYZI>::Ptr cluster : cloud_clusters) {
+    renderPointCloud(viewer, cluster, "obstCloud" + std::to_string(cluster_id),
+                     colors[cluster_id % colors.size()]);
+
+    BoxQ box = point_processor->RotatedBoundingBox(cluster);
+    renderBox(viewer, box, cluster_id);
+    ++cluster_id;
+  }
+}
+
 void simpleHighway(pcl::visualization::PCLVisualizer::Ptr& viewer) {
   // ----------------------------------------------------
   // -----Open 3D viewer and display simple highway -----
@@ -130,7 +178,10 @@ int main(int argc, char** argv) {
       new pcl::visualization::PCLVisualizer("3D Viewer"));
   CameraAngle setAngle = XY;
   initCamera(setAngle, viewer);
-  simpleHighway(viewer);
+  //simpleHighway(viewer);
+
+  // Lesson 4
+  cityBlock(viewer);
 
   while (!viewer->wasStopped()) {
     viewer->spinOnce();
