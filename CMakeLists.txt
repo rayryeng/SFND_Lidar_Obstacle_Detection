@@ -9,7 +9,7 @@ project(playback)
 
 find_package(PCL 1.2 REQUIRED)
 
-include_directories(${PCL_INCLUDE_DIRS} src/quiz/ransac/ransac3d.h)
+include_directories(${PCL_INCLUDE_DIRS} src/quiz/ransac/)
 link_directories(${PCL_LIBRARY_DIRS})
 add_definitions(${PCL_DEFINITIONS})
 list(REMOVE_ITEM PCL_LIBRARIES "vtkproj4")
